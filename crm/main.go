@@ -1,26 +1,16 @@
 package main
 
 import (
-	"database/sql"
+	"crm/pages"
 	"errors"
-	"fmt"
 	"log"
-	"strings"
 
 	. "github.com/awesome-gocui/gocui"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type User struct {
-	Id        int    `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-}
-
-var (
+/*var (
 	widgets      = []string{"email", "password", "login"}
 	currentIndex = 0
 	email        string
@@ -62,7 +52,7 @@ func createEmailField(g *Gui, maxX, maxY int) error {
 		if !errors.Is(err, ErrUnknownView) {
 			return err
 		}
-		v.Title = "Login"
+		v.Title = "Email"
 		v.Editable = true
 		v.Wrap = false
 	}
@@ -106,7 +96,7 @@ func layout(g *Gui) error {
 	return nil
 }
 
-func layout2(user User) func(g *Gui) error {
+func layout2(user user.User) func(g *Gui) error {
 	return func(g *Gui) error {
 		maxX, maxY := g.Size()
 
@@ -178,7 +168,7 @@ func doLogin(g *Gui, v *View) error {
 			v.Title = "Result"
 
 			row := db.QueryRow("SELECT id, first_name, last_name, email FROM user WHERE email=? AND password=SHA1(?)", email, password)
-			var user = User{}
+			var user = user.User{}
 			if err = row.Scan(
 				&user.Id, &user.FirstName,
 				&user.LastName, &user.Email,
@@ -215,7 +205,7 @@ func keybindings(g *Gui) error {
 
 func quit(g *Gui, v *View) error {
 	return ErrQuit
-}
+}*/
 
 func main() {
 	g, err := NewGui(OutputNormal, true)
@@ -224,13 +214,20 @@ func main() {
 	}
 	defer g.Close()
 
-	g.SetManagerFunc(layout)
-
-	if err := keybindings(g); err != nil {
-		log.Panicln(err)
+	var layout = &pages.Login{
+		Email:    "nchoquet@norsys.fr",
+		Password: "12041998Yann?!",
 	}
 
-	if err := g.MainLoop(); err != nil && err != ErrQuit {
+	layout.SetWidgets([]string{"email", "password", "login"})
+
+	g.SetManagerFunc(layout.Render)
+	//
+	//if err := keybindings(g); err != nil {
+	//	log.Panicln(err)
+	//}
+
+	if err := g.MainLoop(); err != nil && !errors.Is(err, ErrQuit) {
 		log.Panicln(err)
 	}
 }
