@@ -2,7 +2,7 @@ package pages
 
 import (
 	"crm/lib"
-	"crm/models/user"
+	userNsp "crm/models/user"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -37,7 +37,9 @@ func (l *Login) doLogin(g *gocui.Gui, v *gocui.View) error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer db.Close()
+		defer func() {
+			db.Close()
+		}()
 
 		if v, err := g.SetView("result", maxX/2-20, maxY/2+7, maxX/2+20, maxY/2+9, 0); err != nil {
 			if !errors.Is(err, gocui.ErrUnknownView) {
@@ -47,7 +49,7 @@ func (l *Login) doLogin(g *gocui.Gui, v *gocui.View) error {
 			v.Title = "Result"
 
 			row := db.QueryRow("SELECT id, first_name, last_name, email FROM user WHERE email=? AND password=SHA1(?)", l.Email, l.Password)
-			var user = user.User{}
+			var user = userNsp.User{}
 			if err = row.Scan(
 				&user.Id, &user.FirstName,
 				&user.LastName, &user.Email,
@@ -57,10 +59,7 @@ func (l *Login) doLogin(g *gocui.Gui, v *gocui.View) error {
 				_, _ = fmt.Fprintf(v, "Wrong password")
 			} else {
 				v.Clear()
-				var layout = &Main{
-					User: &user,
-				}
-
+				var layout = &Main{User: &user}
 				g.SetManagerFunc(layout.Render)
 
 				if err := g.MainLoop(); err != nil && !errors.Is(err, gocui.ErrQuit) {

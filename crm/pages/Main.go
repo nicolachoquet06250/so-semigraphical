@@ -118,12 +118,6 @@ func (m *Main) Render(g *gocui.Gui) error {
 	}); err != nil {
 		return err
 	}
-	//if err := g.SetKeybinding("", gocui.MouseRelease, gocui.ModNone, m.mouseUp); err != nil {
-	//	return err
-	//}
-	//if err := g.SetKeybinding("msg", gocui.MouseLeft, gocui.ModNone, m.msgDown); err != nil {
-	//	return err
-	//}
 
 	if err := m.Layout.Keybindings(g); err != nil {
 		log.Panicln(err)
