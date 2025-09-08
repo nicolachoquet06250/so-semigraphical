@@ -33,7 +33,7 @@ func createLoginButton(g *Gui, maxX, maxY int) error {
 			return err
 		}
 		v.Clear()
-		fmt.Fprintln(v, "Login (Press Enter)")
+		_, _ = fmt.Fprintln(v, "Login (Press Enter)")
 	}
 
 	if err := g.SetKeybinding("login", KeyEnter, ModNone, doLogin); err != nil {
@@ -106,18 +106,33 @@ func layout(g *Gui) error {
 	return nil
 }
 
-func layout2(g *Gui) error {
-	maxX, maxY := g.Size()
+func layout2(user User) func(g *Gui) error {
+	return func(g *Gui) error {
+		maxX, maxY := g.Size()
 
-	if v, err := g.SetView("main-frame", 1, 1, maxX-1, maxY-1, 0); err != nil {
-		if err != ErrUnknownView {
-			return err
+		if v, err := g.SetView("main-frame", 1, 1, maxX-1, maxY-1, 0); err != nil {
+			if !errors.Is(err, ErrUnknownView) {
+				return err
+			}
+			v.Frame = true
+			v.Title = "Main"
 		}
-		v.Frame = true
-		v.Title = "Main"
-	}
 
-	return nil
+		if v, err := g.SetView("user", maxX-30, 2, maxX-2, 6, 0); err != nil {
+			if !errors.Is(err, ErrUnknownView) {
+				return err
+			}
+			v.Frame = true
+
+			_, _ = fmt.Fprintf(v, "FirstName: %s\nLastName: %s\nEmail: %s", user.FirstName, user.LastName, user.Email)
+		}
+
+		if err := keybindings(g); err != nil {
+			log.Panicln(err)
+		}
+
+		return nil
+	}
 }
 
 func updateCursor(g *Gui) {
@@ -156,32 +171,26 @@ func doLogin(g *Gui, v *View) error {
 		defer db.Close()
 
 		if v, err := g.SetView("result", maxX/2-20, maxY/2+7, maxX/2+20, maxY/2+9, 0); err != nil {
-			if err != ErrUnknownView {
+			if !errors.Is(err, ErrUnknownView) {
 				return err
 			}
 			v.Clear()
 			v.Title = "Result"
 
-			row := db.QueryRow("SELECT id, first_name, last_name, email, password FROM user WHERE email=? AND password=SHA1(?)", email, password)
+			row := db.QueryRow("SELECT id, first_name, last_name, email FROM user WHERE email=? AND password=SHA1(?)", email, password)
 			var user = User{}
 			if err = row.Scan(
 				&user.Id, &user.FirstName,
 				&user.LastName, &user.Email,
-				&user.Password,
 			); err != nil {
 				_ = g.DeleteView("login")
 				_ = createLoginButton(g, maxX, maxY)
-				fmt.Fprintf(v, "Wrong password")
+				_, _ = fmt.Fprintf(v, "Wrong password")
 			} else {
-				fmt.Fprintf(v, "FirstName: %s, LastName: %s", user.FirstName, user.LastName)
 				v.Clear()
-				g.SetManagerFunc(layout2)
+				g.SetManagerFunc(layout2(user))
 
-				if err := keybindings(g); err != nil {
-					log.Panicln(err)
-				}
-
-				if err := g.MainLoop(); err != nil && err != ErrQuit {
+				if err := g.MainLoop(); err != nil && !errors.Is(err, ErrQuit) {
 					log.Panicln(err)
 				}
 			}
